@@ -14,20 +14,29 @@ def load_model():
         return json.load(f)
 
 
-def split_compound(word, dictionary):
+def recursive_split(word, dictionary):
     """
-    Zerlegt ein deutsches Kompositum mithilfe des
-    Fugenlaut-Analyzers.
+    Zerlegt ein Kompositum rekursiv in möglichst viele Bestandteile.
     """
 
     parts = split_compound_with_fugenlaut(word, dictionary)
 
-    return parts
+    if not parts:
+        return [word]
+
+    left, right = parts
+
+    result = []
+
+    result.extend(recursive_split(left, dictionary))
+    result.extend(recursive_split(right, dictionary))
+
+    return result
 
 
 def translate_part(part, model):
     """
-    Übersetzt einen einzelnen Bestandteil eines Kompositums.
+    Übersetzt einen einzelnen Bestandteil.
     """
 
     dictionary = model["direct_dictionary"]
@@ -51,20 +60,19 @@ def translate_part(part, model):
 
 def translate_compound(word, model):
     """
-    Versucht ein Kompositum zu übersetzen.
+    Übersetzt ein rekursiv zerlegtes Kompositum.
     """
 
     dictionary = model["direct_dictionary"]
 
-    parts = split_compound(word, dictionary)
+    parts = recursive_split(word.lower(), dictionary)
 
-    if not parts:
+    if len(parts) == 1:
         return None
 
     translated = []
 
     for p in parts:
-
         translated.append(
             translate_part(p, model)
         )
@@ -78,13 +86,12 @@ if __name__ == "__main__":
 
     test_words = [
 
-        "Krankenhaus",
+        "Krankenhausverwaltung",
+        "Straßenbahnhaltestelle",
+        "Kindergartenleiter",
+        "Bürgermeisteramt",
         "Winterabend",
-        "Straßenlampe",
-        "Kindergarten",
-        "Bürgermeister",
-        "Arbeitsamt",
-        "Herzarzt"
+        "Krankenhaus"
 
     ]
 
