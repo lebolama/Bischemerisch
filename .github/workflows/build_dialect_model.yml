@@ -37,6 +37,9 @@ jobs:
       - name: Grammatikmodell erzeugen
         run: python analysis/grammar_model.py
 
+      - name: Dialektkorpus analysieren
+        run: python analysis/corpus_rule_learner.py
+
       - name: Dialektmodell bauen
         run: python analysis/build_dialect_model.py
 
