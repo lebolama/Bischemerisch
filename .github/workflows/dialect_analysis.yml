@@ -1,0 +1,25 @@
+name: Dialect Analysis
+
+on:
+  push:
+    paths:
+      - data/bischemer_lexikon_master.csv
+
+jobs:
+  build-dialect-model:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v3
+
+      - name: Python installieren
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Analyse starten
+        run: |
+          python analysis/rule_miner.py
+          python analysis/build_dialect_model.py
