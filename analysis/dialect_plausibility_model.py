@@ -1,12 +1,12 @@
+import csv
 import json
-import re
-import sys
-from pathlib import Path
+import logging
 from collections import Counter
+from pathlib import Path
 
+LOGGER = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(str(BASE_DIR))
 
 MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
 CORPUS_PATTERNS = BASE_DIR / "output" / "corpus_patterns.csv"
@@ -15,6 +15,9 @@ OUTPUT_MODEL = BASE_DIR / "output" / "dialect_plausibility.json"
 
 
 def load_dialect_model():
+
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(f"Dialektmodell nicht gefunden: {MODEL_PATH}")
 
     with open(MODEL_PATH, encoding="utf-8") as f:
         return json.load(f)
@@ -25,17 +28,16 @@ def load_corpus_patterns():
     patterns = Counter()
 
     if not CORPUS_PATTERNS.exists():
+        LOGGER.warning("Corpus-Patterns fehlen: %s", CORPUS_PATTERNS)
         return patterns
 
     with open(CORPUS_PATTERNS, encoding="utf-8") as f:
-
-        next(f)
-
-        for line in f:
-
-            p, freq = line.strip().split(",")
-
-            patterns[p] = int(freq)
+        reader = csv.DictReader(f)
+        for row in reader:
+            try:
+                patterns[row["pattern"]] = int(row["frequency"])
+            except (KeyError, TypeError, ValueError):
+                LOGGER.warning("Ungültige Pattern-Zeile übersprungen: %s", row)
 
     return patterns
 
@@ -72,17 +74,24 @@ def merge_patterns(dict_patterns, corpus_patterns):
 
 def save_model(patterns):
 
-    model = dict(patterns.most_common(500))
+    model = {
+        "metadata": {
+            "top_k": 500,
+            "corpus_weight": 2,
+        },
+        "patterns": dict(patterns.most_common(500)),
+    }
 
+    OUTPUT_MODEL.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_MODEL, "w", encoding="utf-8") as f:
 
         json.dump(model, f, ensure_ascii=False, indent=2)
 
-    print("Dialekt-Plausibilitätsmodell gespeichert:")
-    print(OUTPUT_MODEL)
+    LOGGER.info("Dialekt-Plausibilitätsmodell gespeichert: %s", OUTPUT_MODEL)
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
     dialect_model = load_dialect_model()
 
