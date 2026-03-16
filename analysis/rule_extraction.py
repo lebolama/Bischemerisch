@@ -1,4 +1,6 @@
-from phonetic_patterns import extract_patterns
+import logging
+
+from analysis.phonetic_patterns import extract_patterns
 
 
 def generate_rules():
@@ -17,9 +19,8 @@ def generate_rules():
 
 
 if __name__ == "__main__":
-
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     rules = generate_rules()
 
-    for r in rules:
-
-        print(r)
+    for rule in rules:
+        logging.info("%s", rule)
