@@ -31,6 +31,9 @@ jobs:
       - name: Dialektregeln berechnen
         run: python analysis/rule_miner.py
 
+      - name: Phonetische Muster analysieren
+        run: python analysis/phonetic_model.py
+
       - name: Dialektmodell bauen
         run: python analysis/build_dialect_model.py
 
