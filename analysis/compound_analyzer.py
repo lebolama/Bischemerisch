@@ -1,48 +1,39 @@
-import json
 from pathlib import Path
+import json
+
+from analysis.fugenlaut_analyzer import split_compound_with_fugenlaut
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
 
 
 def load_model():
 
     with open(MODEL_PATH, encoding="utf-8") as f:
-
         return json.load(f)
 
 
 def split_compound(word, dictionary):
-
     """
-    Versucht ein deutsches Kompositum in bekannte Wörter zu zerlegen.
+    Zerlegt ein deutsches Kompositum mithilfe des
+    Fugenlaut-Analyzers.
     """
 
-    word = word.lower()
+    parts = split_compound_with_fugenlaut(word, dictionary)
 
-    parts = []
-
-    for i in range(3, len(word) - 2):
-
-        left = word[:i]
-        right = word[i:]
-
-        if left in dictionary and right in dictionary:
-
-            return [left, right]
-
-    return None
+    return parts
 
 
 def translate_part(part, model):
+    """
+    Übersetzt einen einzelnen Bestandteil eines Kompositums.
+    """
 
     dictionary = model["direct_dictionary"]
-
     rules = model["rules"]
 
     if part in dictionary:
-
         return dictionary[part]
 
     result = part
@@ -53,27 +44,30 @@ def translate_part(part, model):
         dst = r["dst"]
 
         if src in result:
-
             result = result.replace(src, dst)
 
     return result
 
 
 def translate_compound(word, model):
+    """
+    Versucht ein Kompositum zu übersetzen.
+    """
 
     dictionary = model["direct_dictionary"]
 
     parts = split_compound(word, dictionary)
 
     if not parts:
-
         return None
 
     translated = []
 
     for p in parts:
 
-        translated.append(translate_part(p, model))
+        translated.append(
+            translate_part(p, model)
+        )
 
     return "".join(translated)
 
@@ -88,7 +82,9 @@ if __name__ == "__main__":
         "Winterabend",
         "Straßenlampe",
         "Kindergarten",
-        "Bürgermeister"
+        "Bürgermeister",
+        "Arbeitsamt",
+        "Herzarzt"
 
     ]
 
