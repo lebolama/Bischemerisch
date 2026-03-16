@@ -1,8 +1,10 @@
 import csv
-import json
+import logging
 from pathlib import Path
 
-from novel_word_generator import generate_candidate, load_model
+from generator.novel_word_generator import generate_candidate, load_model
+
+LOGGER = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 WORDLIST = BASE_DIR / "corpus" / "deutsche_wortliste.txt"
@@ -59,6 +61,9 @@ def classify_confidence(score):
 
 
 def load_wordlist(path=WORDLIST):
+    if not path.exists():
+        raise FileNotFoundError(f"Wortliste nicht gefunden: {path}")
+
     words = []
     with open(path, encoding="utf-8") as f:
         for line in f:
@@ -98,6 +103,8 @@ def generate_uncertain_words(model, threshold=0.50):
 
 
 def save_results(rows, out_path=OUTPUT):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
     with open(out_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -124,21 +131,24 @@ def save_results(rows, out_path=OUTPUT):
             ])
 
 
-if __name__ == "__main__":
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
+
     model = load_model()
     rows = generate_uncertain_words(model, threshold=0.50)
     save_results(rows)
 
-    print(f"{len(rows)} unsichere Wörter gespeichert unter:")
-    print(OUTPUT)
+    LOGGER.info("%s unsichere Wörter gespeichert unter: %s", len(rows), OUTPUT)
 
     for row in rows[:20]:
-        print(
+        LOGGER.info(
+            "%s -> %s | score: %s | label: %s",
             row["hochdeutsch"],
-            "->",
             row["vorschlag_bischemerisch"],
-            "| score:",
             row["confidence_score"],
-            "| label:",
             row["confidence_label"],
         )
+
+
+if __name__ == "__main__":
+    main()
