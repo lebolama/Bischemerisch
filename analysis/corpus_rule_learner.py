@@ -1,12 +1,12 @@
+import csv
+import logging
 import re
-import json
-import sys
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
+LOGGER = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(str(BASE_DIR))
 
 CORPUS_PATH = BASE_DIR / "data" / "baerthel.txt"
 MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
@@ -18,9 +18,7 @@ OUTPUT_PATTERNS = BASE_DIR / "output" / "corpus_patterns.csv"
 def load_corpus():
 
     if not CORPUS_PATH.exists():
-
-        print("Corpus-Datei nicht gefunden:", CORPUS_PATH)
-        return ""
+        raise FileNotFoundError(f"Corpus-Datei nicht gefunden: {CORPUS_PATH}")
 
     with open(CORPUS_PATH, encoding="utf-8") as f:
 
@@ -33,6 +31,10 @@ def tokenize(text):
 
 
 def load_dictionary():
+    import json
+
+    if not MODEL_PATH.exists():
+        raise FileNotFoundError(f"Dialektmodell nicht gefunden: {MODEL_PATH}")
 
     with open(MODEL_PATH, encoding="utf-8") as f:
 
@@ -81,34 +83,28 @@ def extract_patterns(tokens):
 
 
 def save_words(words):
+    OUTPUT_WORDS.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(OUTPUT_WORDS, "w", encoding="utf-8") as f:
-
-        f.write("dialektwort,frequency\n")
-
-        for w, n in words:
-
-            f.write(f"{w},{n}\n")
+    with open(OUTPUT_WORDS, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["dialektwort", "frequency"])
+        writer.writerows(words)
 
 
 def save_patterns(patterns):
+    OUTPUT_PATTERNS.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(OUTPUT_PATTERNS, "w", encoding="utf-8") as f:
-
-        f.write("pattern,frequency\n")
-
+    with open(OUTPUT_PATTERNS, "w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["pattern", "frequency"])
         for p, n in patterns.most_common(200):
-
-            f.write(f"{p},{n}\n")
+            writer.writerow([p, n])
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
     text = load_corpus()
-
-    if not text:
-        return
-
     tokens = tokenize(text)
 
     dictionary = load_dictionary()
@@ -121,9 +117,9 @@ def main():
 
     save_patterns(patterns)
 
-    print("Corpus-Analyse abgeschlossen.")
-    print("Neue Dialektwörter:", OUTPUT_WORDS)
-    print("Neue Muster:", OUTPUT_PATTERNS)
+    LOGGER.info("Corpus-Analyse abgeschlossen.")
+    LOGGER.info("Neue Dialektwörter: %s", OUTPUT_WORDS)
+    LOGGER.info("Neue Muster: %s", OUTPUT_PATTERNS)
 
 
 if __name__ == "__main__":
