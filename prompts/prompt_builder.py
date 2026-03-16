@@ -14,17 +14,29 @@ def load_model():
 
 def build_rules_section(rules, limit=60):
     lines = []
-    for r in rules[:limit]:
+    for rule in rules[:limit]:
         lines.append(
-            f"- {r['src']} → {r['dst']} "
-            f"(confidence={r['confidence']}, support={r['support']})"
+            f"- {rule['src']} -> {rule['dst']} "
+            f"(confidence={rule['confidence']}, support={rule['support']})"
         )
     return "\n".join(lines)
 
 
 def build_dictionary_examples(direct_dictionary, limit=40):
     items = list(direct_dictionary.items())[:limit]
-    lines = [f"- {hd} → {bi}" for hd, bi in items]
+    return "\n".join(f"- {hd} -> {bi}" for hd, bi in items)
+
+
+def build_corpus_signatures(corpus_signatures, limit=30):
+    if not corpus_signatures:
+        return "- (keine Korpus-Signaturen im Modell gefunden)"
+
+    lines = []
+    for item in corpus_signatures[:limit]:
+        lines.append(
+            f"- {item['pattern']} "
+            f"(corpus={item['corpus_frequency']}, hd={item['hochdeutsch_frequency']}, ratio={item['ratio']})"
+        )
     return "\n".join(lines)
 
 
@@ -37,7 +49,9 @@ def main():
     prompt = template
     prompt = prompt.replace("{{DIALEKTREGELN}}", build_rules_section(model["rules"]))
     prompt = prompt.replace("{{WÖRTERBUCHBEISPIELE}}", build_dictionary_examples(model["direct_dictionary"]))
+    prompt = prompt.replace("{{KORPUSSIGNATUREN}}", build_corpus_signatures(model.get("corpus_signatures", [])))
 
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(prompt)
 
