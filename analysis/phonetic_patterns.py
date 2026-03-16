@@ -1,10 +1,16 @@
+import logging
 from collections import Counter
-from word_alignment import load_dictionary, align_words
+from pathlib import Path
+
+from analysis.word_alignment import load_dictionary, align_words
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_PATH = BASE_DIR / "data" / "bischemer_lexikon_master.csv"
 
 
 def extract_patterns():
 
-    pairs = load_dictionary("../data/bischemer_lexikon_master.csv")
+    pairs = load_dictionary(DATA_PATH)
 
     alignments = align_words(pairs)
 
@@ -22,9 +28,8 @@ def extract_patterns():
 
 
 if __name__ == "__main__":
-
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     patterns = extract_patterns()
 
     for p, n in patterns.most_common(40):
-
-        print(p, n)
+        logging.info("%s %s", p, n)
