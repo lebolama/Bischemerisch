@@ -1,7 +1,11 @@
+import logging
 import re
-from dialect_translator import translate_word, load_dictionary
+from pathlib import Path
 
-dictionary = load_dictionary("../data/bischemer_lexikon_master.csv")
+from generator.dialect_translator import translate_word, load_dictionary
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DICTIONARY_PATH = BASE_DIR / "data" / "bischemer_lexikon_master.csv"
 
 
 def tokenize(sentence):
@@ -10,6 +14,7 @@ def tokenize(sentence):
 
 def translate_sentence(sentence):
 
+    dictionary = load_dictionary(DICTIONARY_PATH)
     tokens = tokenize(sentence)
 
     result = []
@@ -29,8 +34,7 @@ def translate_sentence(sentence):
 
 
 if __name__ == "__main__":
-
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     s = "Der Apfel liegt auf dem Tisch."
-
-    print("Hochdeutsch:", s)
-    print("Bischemerisch:", translate_sentence(s))
+    logging.info("Hochdeutsch: %s", s)
+    logging.info("Bischemerisch: %s", translate_sentence(s))
