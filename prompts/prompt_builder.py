@@ -1,40 +1,48 @@
-import csv
+import json
+from pathlib import Path
 
-RULES_FILE = "../output/phonetic_rules.csv"
-TEMPLATE = "bischemer_prompt_template.txt"
-OUTPUT = "../output/generated_prompt.txt"
-
-
-def load_rules():
-
-    rules = []
-
-    with open(RULES_FILE, encoding="utf-8") as f:
-
-        reader = csv.DictReader(f)
-
-        for row in reader:
-
-            rules.append(f"{row['hochdeutsch']} → {row['dialekt']}")
-
-    return rules
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
+TEMPLATE_PATH = BASE_DIR / "prompts" / "bischemer_prompt_template.txt"
+OUTPUT_PATH = BASE_DIR / "output" / "generated_prompt.txt"
 
 
-def build_prompt():
+def load_model():
+    with open(MODEL_PATH, encoding="utf-8") as f:
+        return json.load(f)
 
-    with open(TEMPLATE, encoding="utf-8") as f:
 
+def build_rules_section(rules, limit=60):
+    lines = []
+    for r in rules[:limit]:
+        lines.append(
+            f"- {r['src']} → {r['dst']} "
+            f"(confidence={r['confidence']}, support={r['support']})"
+        )
+    return "\n".join(lines)
+
+
+def build_dictionary_examples(direct_dictionary, limit=40):
+    items = list(direct_dictionary.items())[:limit]
+    lines = [f"- {hd} → {bi}" for hd, bi in items]
+    return "\n".join(lines)
+
+
+def main():
+    model = load_model()
+
+    with open(TEMPLATE_PATH, encoding="utf-8") as f:
         template = f.read()
 
-    rules = "\n".join(load_rules())
+    prompt = template
+    prompt = prompt.replace("{{DIALEKTREGELN}}", build_rules_section(model["rules"]))
+    prompt = prompt.replace("{{WÖRTERBUCHBEISPIELE}}", build_dictionary_examples(model["direct_dictionary"]))
 
-    prompt = template.replace("{{DIALEKTREGELN}}", rules)
-
-    with open(OUTPUT, "w", encoding="utf-8") as f:
-
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(prompt)
+
+    print(f"Prompt gespeichert unter: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
-
-    build_prompt()
+    main()
