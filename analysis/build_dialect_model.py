@@ -1,19 +1,19 @@
 import json
+import sys
 from pathlib import Path
+
+# Projektpfad hinzufügen (fix für GitHub Actions)
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
 
 from analysis.rule_miner import mine_rules, load_dictionary
 from analysis.phonetic_model import extract_patterns
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "output"
 
 
 def build_direct_dictionary(pairs):
-    """
-    Erstellt ein Wörterbuch hochdeutsch → bischemerisch.
-    Wenn mehrere Varianten existieren, wird zunächst die erste genommen.
-    """
 
     d = {}
 
@@ -26,9 +26,6 @@ def build_direct_dictionary(pairs):
 
 
 def serialize_rules(rules, top_n=200):
-    """
-    Reduziert Regeln auf ein kompaktes JSON-Format.
-    """
 
     return [
         {
@@ -42,9 +39,6 @@ def serialize_rules(rules, top_n=200):
 
 
 def serialize_phonetic_patterns(patterns, top_n=200):
-    """
-    Wandelt die häufigsten phonetischen Muster in ein JSON-Format um.
-    """
 
     result = []
 
