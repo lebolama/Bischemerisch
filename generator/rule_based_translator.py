@@ -6,12 +6,20 @@ from analysis.compound_analyzer import translate_compound
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
+GRAMMAR_PATH = BASE_DIR / "output" / "grammar_rules.json"
 
 
-def load_model(path=MODEL_PATH):
+def load_model():
 
-    with open(path, encoding="utf-8") as f:
+    with open(MODEL_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_grammar():
+
+    with open(GRAMMAR_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -63,17 +71,16 @@ def translate_word(word, model):
     clean = word.lower()
 
     direct_dictionary = model["direct_dictionary"]
-
     rules = model["rules"]
 
-    # 1 Wörterbuch prüfen
+    # 1 Wörterbuch
     if clean in direct_dictionary:
 
         translated = direct_dictionary[clean]
 
         return preserve_case(word, translated)
 
-    # 2 Kompositum versuchen
+    # 2 Kompositum
     compound = translate_compound(clean, model)
 
     if compound:
@@ -86,6 +93,38 @@ def translate_word(word, model):
     return preserve_case(word, generated)
 
 
+def apply_grammar_rules(text):
+
+    grammar = load_grammar()
+
+    words = text.split()
+
+    result = []
+
+    for w in words:
+
+        lw = w.lower()
+
+        if lw in grammar["function_words"]:
+
+            result.append(grammar["function_words"][lw])
+            continue
+
+        if lw in grammar["verb_shortening"]:
+
+            result.append(grammar["verb_shortening"][lw])
+            continue
+
+        if lw in grammar["typical_replacements"]:
+
+            result.append(grammar["typical_replacements"][lw])
+            continue
+
+        result.append(w)
+
+    return " ".join(result)
+
+
 def translate_sentence(text, model):
 
     tokens = tokenize(text)
@@ -96,7 +135,9 @@ def translate_sentence(text, model):
 
         if re.fullmatch(r"\w+", tok, flags=re.UNICODE):
 
-            result.append(translate_word(tok, model))
+            result.append(
+                translate_word(tok, model)
+            )
 
         else:
 
@@ -119,6 +160,9 @@ def translate_sentence(text, model):
         else:
             out += " " + tok
 
+    # Grammatikregeln anwenden
+    out = apply_grammar_rules(out)
+
     return out
 
 
@@ -129,10 +173,11 @@ if __name__ == "__main__":
     samples = [
 
         "Der Apfel liegt auf dem Tisch.",
-        "Ich spreche heute mit dem alten Mann.",
-        "Wir gehen nach Hause und trinken Wasser.",
+        "Ich habe das heute gesehen.",
+        "Wir gehen nach Hause.",
         "Das Krankenhaus steht am Stadtrand.",
-        "Der Bürgermeister besucht das Rathaus."
+        "Der Bürgermeister besucht das Rathaus.",
+        "Der Kindergartenleiter spricht mit den Eltern."
 
     ]
 
