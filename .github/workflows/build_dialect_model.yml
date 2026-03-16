@@ -34,6 +34,9 @@ jobs:
       - name: Phonetische Muster analysieren
         run: python analysis/phonetic_model.py
 
+      - name: Grammatikmodell erzeugen
+        run: python analysis/grammar_model.py
+
       - name: Dialektmodell bauen
         run: python analysis/build_dialect_model.py
 
