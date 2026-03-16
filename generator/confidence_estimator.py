@@ -1,146 +1,144 @@
 import csv
 import json
-import re
 from pathlib import Path
 
+from novel_word_generator import generate_candidate, load_model
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
-OUTPUT_PATH = BASE_DIR / "output" / "generated_candidates.csv"
+WORDLIST = BASE_DIR / "corpus" / "deutsche_wortliste.txt"
+OUTPUT = BASE_DIR / "output" / "unsichere_woerter.csv"
 
 
-def load_model(path=MODEL_PATH):
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
-
-
-def preserve_case(source, target):
-    if not source:
-        return target
-    if source.isupper():
-        return target.upper()
-    if source[0].isupper():
-        return target[:1].upper() + target[1:]
-    return target
-
-
-def apply_rules_verbose(word, rules):
+def score_candidate(input_word, candidate, applied_rules):
     """
-    Wendet Regeln auf ein Wort an und protokolliert,
-    welche Regeln tatsächlich gegriffen haben.
+    Heuristische Unsicherheitsbewertung.
+    Hoher Score = relativ plausibel
+    Niedriger Score = eher unsicher
     """
-    result = word.lower()
-    applied = []
 
-    sorted_rules = sorted(
-        rules,
-        key=lambda r: (len(r["src"]), r["confidence"], r["support"]),
-        reverse=True,
+    if not input_word:
+        return 0.0
+
+    if not applied_rules:
+        # wenn keine Regel angewendet wurde, ist es entweder bekannt
+        # oder praktisch unverändert geblieben -> meist unsicher
+        if input_word.lower() == candidate.lower():
+            return 0.15
+        return 0.45
+
+    avg_conf = sum(r["confidence"] for r in applied_rules) / len(applied_rules)
+    avg_support = sum(r["support"] for r in applied_rules) / len(applied_rules)
+
+    # Normierung grob auf 0..1
+    support_factor = min(avg_support / 50, 1.0)
+
+    # Je mehr Regeln greifen, desto besser – aber nur bis zu einem Punkt
+    coverage_factor = min(len(applied_rules) / 4, 1.0)
+
+    # Wenn sich das Wort stark verändert hat, ist das oft ein gutes Zeichen,
+    # solange die Regeln stark sind
+    changed = input_word.lower() != candidate.lower()
+    change_factor = 1.0 if changed else 0.3
+
+    score = (
+        0.45 * avg_conf
+        + 0.25 * support_factor
+        + 0.20 * coverage_factor
+        + 0.10 * change_factor
     )
 
-    for rule in sorted_rules:
-        src = rule["src"]
-        dst = rule["dst"]
+    return round(max(0.0, min(score, 1.0)), 3)
 
-        if not src:
+
+def classify_confidence(score):
+    if score >= 0.75:
+        return "hoch"
+    if score >= 0.50:
+        return "mittel"
+    return "niedrig"
+
+
+def load_wordlist(path=WORDLIST):
+    words = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            word = line.strip()
+            if word:
+                words.append(word)
+    return words
+
+
+def generate_uncertain_words(model, threshold=0.50):
+    rows = []
+    for word in load_wordlist():
+        result = generate_candidate(word, model)
+
+        if result["known_word"]:
             continue
 
-        if src in result:
-            occurrences_before = result.count(src)
-            new_result = result.replace(src, dst)
-            if new_result != result:
-                applied.append({
-                    "src": src,
-                    "dst": dst,
-                    "confidence": rule["confidence"],
-                    "support": rule["support"],
-                    "count": occurrences_before,
-                })
-                result = new_result
+        score = score_candidate(
+            result["input_word"],
+            result["candidate"],
+            result["applied_rules"],
+        )
 
-    return result, applied
+        label = classify_confidence(score)
 
+        if score < threshold:
+            rows.append({
+                "hochdeutsch": result["input_word"],
+                "vorschlag_bischemerisch": result["candidate"],
+                "confidence_score": score,
+                "confidence_label": label,
+                "applied_rule_count": len(result["applied_rules"]),
+                "applied_rules": result["applied_rules"],
+            })
 
-def generate_candidate(word, model):
-    """
-    Erzeugt für ein unbekanntes Wort eine plausible büschemerische Form.
-    """
-    direct_dictionary = model["direct_dictionary"]
-    rules = model["rules"]
-
-    clean = word.lower()
-
-    if clean in direct_dictionary:
-        return {
-            "input_word": word,
-            "candidate": preserve_case(word, direct_dictionary[clean]),
-            "known_word": True,
-            "applied_rules": [],
-        }
-
-    candidate, applied_rules = apply_rules_verbose(clean, rules)
-
-    return {
-        "input_word": word,
-        "candidate": preserve_case(word, candidate),
-        "known_word": False,
-        "applied_rules": applied_rules,
-    }
+    return rows
 
 
-def tokenize_words(text):
-    return re.findall(r"\w+", text, flags=re.UNICODE)
-
-
-def save_candidates(rows, out_path=OUTPUT_PATH):
+def save_results(rows, out_path=OUTPUT):
     with open(out_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
             "hochdeutsch",
             "vorschlag_bischemerisch",
-            "known_word",
+            "confidence_score",
+            "confidence_label",
             "applied_rule_count",
             "applied_rules",
         ])
+
         for row in rows:
             rules_str = " | ".join(
                 f"{r['src']}->{r['dst']} (conf={r['confidence']}, support={r['support']}, n={r['count']})"
                 for r in row["applied_rules"]
             )
             writer.writerow([
-                row["input_word"],
-                row["candidate"],
-                row["known_word"],
-                len(row["applied_rules"]),
+                row["hochdeutsch"],
+                row["vorschlag_bischemerisch"],
+                row["confidence_score"],
+                row["confidence_label"],
+                row["applied_rule_count"],
                 rules_str,
             ])
 
 
 if __name__ == "__main__":
     model = load_model()
+    rows = generate_uncertain_words(model, threshold=0.50)
+    save_results(rows)
 
-    sample_words = [
-        "Krankenhaus",
-        "Telefon",
-        "Messer",
-        "Schmetterling",
-        "arbeiten",
-        "Bürgermeister",
-        "Fensterladen",
-        "Sommerabend",
-    ]
+    print(f"{len(rows)} unsichere Wörter gespeichert unter:")
+    print(OUTPUT)
 
-    results = [generate_candidate(w, model) for w in sample_words]
-    save_candidates(results)
-
-    for row in results:
-        print(row["input_word"], "->", row["candidate"])
-        if row["known_word"]:
-            print("  bekanntes Wort aus Wörterbuch")
-        else:
-            print("  angewendete Regeln:", len(row["applied_rules"]))
-            for r in row["applied_rules"][:5]:
-                print(
-                    f"   - {r['src']} -> {r['dst']} "
-                    f"(conf={r['confidence']}, support={r['support']}, n={r['count']})"
-                )
-        print()
+    for row in rows[:20]:
+        print(
+            row["hochdeutsch"],
+            "->",
+            row["vorschlag_bischemerisch"],
+            "| score:",
+            row["confidence_score"],
+            "| label:",
+            row["confidence_label"],
+        )
