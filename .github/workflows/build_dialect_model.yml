@@ -1,0 +1,47 @@
+name: Build Bischemerisch Dialect Model
+
+on:
+  push:
+    paths:
+      - data/bischemer_lexikon_master.csv
+      - analysis/**
+      - generator/**
+      - prompts/**
+      - learning/**
+  workflow_dispatch:
+
+jobs:
+  build-model:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python installieren
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python-Version anzeigen
+        run: python --version
+
+      - name: Dialektregeln berechnen
+        run: python analysis/rule_miner.py
+
+      - name: Dialektmodell bauen
+        run: python analysis/build_dialect_model.py
+
+      - name: Neue Dialektkandidaten generieren
+        run: python generator/novel_word_generator.py
+
+      - name: Unsichere Wörter analysieren
+        run: python generator/confidence_estimator.py
+
+      - name: Wörterbuchkandidaten erzeugen
+        run: python learning/propose_dictionary_updates.py
+
+      - name: Prompt erzeugen
+        run: python prompts/prompt_builder.py
