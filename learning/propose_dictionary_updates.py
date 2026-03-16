@@ -9,6 +9,13 @@ OUTPUT = BASE_DIR / "output" / "dictionary_update_candidates.csv"
 
 def load_uncertain_words():
 
+    if not INPUT.exists():
+
+        print("Keine unsicheren Wörter gefunden.")
+        print("Datei fehlt:", INPUT)
+
+        return []
+
     rows = []
 
     with open(INPUT, encoding="utf-8") as f:
@@ -17,9 +24,12 @@ def load_uncertain_words():
 
         for row in reader:
 
-            score = float(row["confidence_score"])
+            try:
+                score = float(row["confidence_score"])
+            except:
+                continue
 
-            if score >= 0.45:  # nur halbwegs plausible Vorschläge
+            if score >= 0.45:
 
                 rows.append(row)
 
@@ -27,6 +37,11 @@ def load_uncertain_words():
 
 
 def save_candidates(rows):
+
+    if not rows:
+
+        print("Keine Wörterbuchkandidaten erzeugt.")
+        return
 
     with open(OUTPUT, "w", encoding="utf-8", newline="") as f:
 
@@ -55,6 +70,4 @@ if __name__ == "__main__":
 
     save_candidates(rows)
 
-    print(len(rows), "Kandidaten gespeichert in")
-
-    print(OUTPUT)
+    print(len(rows), "Wörterbuchkandidaten gespeichert.")
