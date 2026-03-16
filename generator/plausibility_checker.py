@@ -1,18 +1,21 @@
 import json
-import sys
+import logging
 from pathlib import Path
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(str(BASE_DIR))
-
 MODEL_PATH = BASE_DIR / "output" / "dialect_plausibility.json"
 
 
 def load_model():
 
     with open(MODEL_PATH, encoding="utf-8") as f:
-        return json.load(f)
+        raw = json.load(f)
+
+    if isinstance(raw, dict) and "patterns" in raw:
+        return raw["patterns"]
+
+    # Rückwärtskompatibilität zu altem Format
+    return raw
 
 
 def score_word(word, model):
@@ -38,20 +41,11 @@ def is_plausible(word, model, threshold=50):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
     model = load_model()
+    tests = ["krankehaus", "krankenhuus", "bischemerisch", "bischemeresch"]
 
-    tests = [
-
-        "krankehaus",
-        "krankenhuus",
-        "bischemerisch",
-        "bischemeresch"
-
-    ]
-
-    for t in tests:
-
-        score = score_word(t, model)
-
-        print(t, "score:", score)
+    for test_word in tests:
+        score = score_word(test_word, model)
+        logging.info("%s score: %s", test_word, score)
