@@ -52,5 +52,8 @@ jobs:
       - name: Wörterbuchkandidaten erzeugen
         run: python learning/propose_dictionary_updates.py
 
+      - name: Dialekt-Plausibilitätsmodell erzeugen
+        run: python analysis/dialect_plausibility_model.py
+
       - name: Prompt erzeugen
         run: python prompts/prompt_builder.py
