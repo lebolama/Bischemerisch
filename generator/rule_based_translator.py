@@ -116,11 +116,33 @@ def translate_word(word, model):
     return preserve_case(word, generated)
 
 
+
+
+def apply_auto_phonetic_rules(word, grammar):
+    rules = grammar.get("auto_phonetic_rules", [])
+    if not rules:
+        return word
+
+    result = word
+    for rule in rules:
+        src = rule.get("src", "")
+        dst = rule.get("dst", "")
+        if not src or src == dst:
+            continue
+        if src in result:
+            result = result.replace(src, dst)
+
+    return result
+
 def apply_grammar_rules(text):
     grammar = get_grammar()
 
+    function_words = grammar.get("function_words", {})
+    verb_shortening = grammar.get("verb_shortening", {})
+    typical_replacements = grammar.get("typical_replacements", {})
+
     # zuerst Mehrwortregeln
-    for src, dst in grammar["function_words"].items():
+    for src, dst in function_words.items():
         if " " in src:
             text = re.sub(rf"\b{re.escape(src)}\b", dst, text, flags=re.IGNORECASE)
 
@@ -130,19 +152,19 @@ def apply_grammar_rules(text):
     for w in words:
         lw = w.lower()
 
-        if lw in grammar["function_words"]:
-            result.append(grammar["function_words"][lw])
+        if lw in function_words:
+            result.append(function_words[lw])
             continue
 
-        if lw in grammar["verb_shortening"]:
-            result.append(grammar["verb_shortening"][lw])
+        if lw in verb_shortening:
+            result.append(verb_shortening[lw])
             continue
 
-        if lw in grammar["typical_replacements"]:
-            result.append(grammar["typical_replacements"][lw])
+        if lw in typical_replacements:
+            result.append(typical_replacements[lw])
             continue
 
-        result.append(w)
+        result.append(apply_auto_phonetic_rules(w, grammar))
 
     return " ".join(result)
 
