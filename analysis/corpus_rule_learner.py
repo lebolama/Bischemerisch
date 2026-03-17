@@ -10,6 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CORPUS_PATH = BASE_DIR / "data" / "baerthel.txt"
 MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
+DICT_PATH = BASE_DIR / "data" / "bischemer_lexikon_master.csv"
 
 OUTPUT_WORDS = BASE_DIR / "output" / "corpus_dialect_words.csv"
 OUTPUT_PATTERNS = BASE_DIR / "output" / "corpus_patterns.csv"
@@ -30,17 +31,41 @@ def tokenize(text):
     return re.findall(r"[a-zäöüß]+", text)
 
 
-def load_dictionary():
+def load_dictionary_from_model(path=MODEL_PATH):
     import json
 
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(f"Dialektmodell nicht gefunden: {MODEL_PATH}")
-
-    with open(MODEL_PATH, encoding="utf-8") as f:
-
+    with open(path, encoding="utf-8") as f:
         model = json.load(f)
 
     return set(model["direct_dictionary"].values())
+
+
+def load_dictionary_from_csv(path=DICT_PATH):
+    if not path.exists():
+        raise FileNotFoundError(f"Wörterbuch-Datei nicht gefunden: {path}")
+
+    values = set()
+    with open(path, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            value = row.get("bischemerisch", "").strip().lower()
+            if value:
+                values.add(value)
+
+    return values
+
+
+def load_dictionary():
+    """
+    Bevorzugt das bereits gebaute Modell (output/dialect_model.json).
+    Fallback auf das Roh-Wörterbuch (data/bischemer_lexikon_master.csv),
+    damit der Workflow auch dann läuft, wenn das Modell erst später gebaut wird.
+    """
+    if MODEL_PATH.exists():
+        return load_dictionary_from_model(MODEL_PATH)
+
+    LOGGER.warning("Dialektmodell nicht gefunden (%s). Fallback auf Wörterbuch-CSV.", MODEL_PATH)
+    return load_dictionary_from_csv(DICT_PATH)
 
 
 def extract_frequent_words(tokens, dictionary):
