@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bischemerisch Übersetzer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container">
+        <h1>Bischemerisch Übersetzer</h1>
+        <p>Hochdeutsch → Büschemerisch (Tauberbischofsheim)</p>
+      </div>
+    </header>
+
+    <main class="container main-layout">
+      <section class="card">
+        <h2>Eingabe</h2>
+        <label for="mode">Modus</label>
+        <select id="mode">
+          <option value="auto">Automatisch</option>
+          <option value="word">Einzelwort</option>
+          <option value="sentence">Satz</option>
+          <option value="text">Text</option>
+        </select>
+
+        <label for="inputText">Hochdeutscher Text</label>
+        <textarea id="inputText" placeholder="z. B. Ich habe das heute schon gesehen."></textarea>
+
+        <div class="actions">
+          <button id="translateBtn">Übersetzen</button>
+          <button id="clearBtn" class="secondary">Leeren</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Ausgabe</h2>
+        <div class="status">
+          <span>Verwendeter Modus:</span>
+          <strong id="modeUsed">-</strong>
+        </div>
+        <textarea id="outputText" readonly placeholder="Hier erscheint die Büschemerisch-Übersetzung"></textarea>
+      </section>
+    </main>
+
+    <footer class="container footer">
+      <small>Basierend auf Wörterbuch, Korpus (baerthel.txt) und Regelmodell.</small>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
