@@ -2,13 +2,17 @@ import json
 import logging
 from pathlib import Path
 
+LOGGER = logging.getLogger(__name__)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "output" / "dialect_plausibility.json"
 
 
-def load_model():
+def load_model(path=MODEL_PATH):
+    if not path.exists():
+        raise FileNotFoundError(f"Plausibilitätsmodell nicht gefunden: {path}")
 
-    with open(MODEL_PATH, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         raw = json.load(f)
 
     if isinstance(raw, dict) and "patterns" in raw:
@@ -18,29 +22,29 @@ def load_model():
     return raw
 
 
-def score_word(word, model):
+def score_word(word, model, min_ngram_len=2, max_ngram_len=4):
+    if not word:
+        return 0
 
     score = 0
+    lower_word = word.lower()
 
-    for i in range(len(word)):
-
-        for j in range(i + 2, min(i + 5, len(word))):
-
-            part = word[i:j]
-
-            if part in model:
-
-                score += model[part]
+    for i in range(len(lower_word)):
+        for j in range(i + min_ngram_len, min(i + max_ngram_len + 1, len(lower_word) + 1)):
+            part = lower_word[i:j]
+            score += model.get(part, 0)
 
     return score
 
 
 def is_plausible(word, model, threshold=50):
+    word_score = score_word(word, model)
+    is_ok = word_score >= threshold
+    LOGGER.debug("Plausibilitätscheck %s: score=%s threshold=%s", word, word_score, threshold)
+    return is_ok
 
-    return score_word(word, model) >= threshold
 
-
-if __name__ == "__main__":
+def main():
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
     model = load_model()
@@ -48,4 +52,8 @@ if __name__ == "__main__":
 
     for test_word in tests:
         score = score_word(test_word, model)
-        logging.info("%s score: %s", test_word, score)
+        LOGGER.info("%s score: %s", test_word, score)
+
+
+if __name__ == "__main__":
+    main()
