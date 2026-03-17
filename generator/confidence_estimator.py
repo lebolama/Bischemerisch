@@ -1,12 +1,16 @@
 import csv
 import logging
+import sys
 from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.append(str(BASE_DIR))
 
 from generator.novel_word_generator import generate_candidate, load_model
 
 LOGGER = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 WORDLIST = BASE_DIR / "corpus" / "deutsche_wortliste.txt"
 OUTPUT = BASE_DIR / "output" / "unsichere_woerter.csv"
 
