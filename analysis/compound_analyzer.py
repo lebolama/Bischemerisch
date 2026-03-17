@@ -1,23 +1,31 @@
-from pathlib import Path
 import json
+import logging
+from pathlib import Path
 
 from analysis.fugenlaut_analyzer import split_compound_with_fugenlaut
 
+LOGGER = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_PATH = BASE_DIR / "output" / "dialect_model.json"
 
 
-def load_model():
+def load_model(path=MODEL_PATH):
+    if not path.exists():
+        raise FileNotFoundError(f"Dialektmodell nicht gefunden: {path}")
 
-    with open(MODEL_PATH, encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def recursive_split(word, dictionary):
+def recursive_split(word, dictionary, max_depth=10, _depth=0):
     """
     Zerlegt ein Kompositum rekursiv in möglichst viele Bestandteile.
+    Schutz gegen Endlosschleifen über max_depth.
     """
+    if _depth >= max_depth:
+        LOGGER.debug("Maximale Rekursionstiefe erreicht für Wort: %s", word)
+        return [word]
 
     parts = split_compound_with_fugenlaut(word, dictionary)
 
@@ -27,11 +35,15 @@ def recursive_split(word, dictionary):
     left, right = parts
 
     result = []
-
-    result.extend(recursive_split(left, dictionary))
-    result.extend(recursive_split(right, dictionary))
+    result.extend(recursive_split(left, dictionary, max_depth=max_depth, _depth=_depth + 1))
+    result.extend(recursive_split(right, dictionary, max_depth=max_depth, _depth=_depth + 1))
 
     return result
+
+
+def _sorted_rules(model):
+    rules = model.get("rules", [])
+    return sorted(rules, key=lambda r: (len(r["src"]), r.get("confidence", 0)), reverse=True)
 
 
 def translate_part(part, model):
@@ -39,18 +51,17 @@ def translate_part(part, model):
     Übersetzt einen einzelnen Bestandteil.
     """
 
-    dictionary = model["direct_dictionary"]
-    rules = model["rules"]
+    dictionary = model.get("direct_dictionary", {})
+    rules = _sorted_rules(model)
 
     if part in dictionary:
         return dictionary[part]
 
     result = part
 
-    for r in rules:
-
-        src = r["src"]
-        dst = r["dst"]
+    for rule in rules:
+        src = rule["src"]
+        dst = rule["dst"]
 
         if src in result:
             result = result.replace(src, dst)
@@ -61,42 +72,43 @@ def translate_part(part, model):
 def translate_compound(word, model):
     """
     Übersetzt ein rekursiv zerlegtes Kompositum.
+    Gibt None zurück, wenn keine Zerlegung möglich ist.
     """
+    if not word:
+        return None
 
-    dictionary = model["direct_dictionary"]
+    dictionary = model.get("direct_dictionary", {})
 
     parts = recursive_split(word.lower(), dictionary)
 
     if len(parts) == 1:
         return None
 
-    translated = []
+    translated = [translate_part(part, model) for part in parts]
 
-    for p in parts:
-        translated.append(
-            translate_part(p, model)
-        )
-
-    return "".join(translated)
+    result = "".join(translated)
+    LOGGER.debug("Kompositum übersetzt: %s -> %s (parts=%s)", word, result, parts)
+    return result
 
 
-if __name__ == "__main__":
+def main():
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
     model = load_model()
 
     test_words = [
-
         "Krankenhausverwaltung",
         "Straßenbahnhaltestelle",
         "Kindergartenleiter",
         "Bürgermeisteramt",
         "Winterabend",
-        "Krankenhaus"
-
+        "Krankenhaus",
     ]
 
-    for w in test_words:
+    for word in test_words:
+        result = translate_compound(word, model)
+        LOGGER.info("%s -> %s", word, result)
 
-        result = translate_compound(w, model)
 
-        print(w, "->", result)
+if __name__ == "__main__":
+    main()
