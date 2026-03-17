@@ -31,8 +31,13 @@ hochdeutsch,bischemerisch
 Apfel,Apfl
 Augen,Aache
 einfach,aafoch
+```
 
-Projektstruktur (aktuell)
+---
+
+## Projektstruktur (aktuell)
+
+```text
 Bischemerisch/
 ├── analysis/
 │   ├── build_dialect_model.py
@@ -54,64 +59,63 @@ Bischemerisch/
 ├── data/
 ├── output/
 └── tests/
+```
 
-Kern-Workflow
-1) Modell bauen
+---
+
+## Kern-Workflow
+
+### 1) Modell bauen
+
+```bash
 python analysis/build_dialect_model.py
+```
+
 Erzeugt u. a.:
 
-output/dialect_model.json
+- `output/dialect_model.json`
+- `output/llm_rules.txt`
 
-output/llm_rules.txt
+### 2) Grammatikmodell erzeugen
 
-2) Grammatikmodell erzeugen
+```bash
 python analysis/grammar_model.py
+```
+
 Erzeugt:
 
-output/grammar_rules.json
+- `output/grammar_rules.json`
 
-3) Prompt erzeugen
+### 3) Prompt erzeugen
+
+```bash
 python prompts/prompt_builder.py
+```
+
 Erzeugt:
 
-output/generated_prompt.txt
+- `output/generated_prompt.txt`
 
-output/generated_prompt.txt wird bewusst aus dem Template gebaut,
-damit Prompt-Logik reproduzierbar bleibt.
+> `output/generated_prompt.txt` wird bewusst aus dem Template gebaut,
+> damit Prompt-Logik reproduzierbar bleibt.
 
-4) Übersetzung testen
+### 4) Übersetzung testen
+
+```bash
 python -m tests.translation_tests
-Hinweise
-Wörterbucheinträge haben Priorität gegenüber abgeleiteten Regeln.
+```
 
-Das Korpus (baerthel.txt) wird zur Ableitung zusätzlicher Dialektsignaturen genutzt.
+---
 
-Für unbekannte Wörter nutzt der Generator Regeln + korpusgestützte Muster.
+## Hinweise
 
-Endziel
+- Wörterbucheinträge haben Priorität gegenüber abgeleiteten Regeln.
+- Das Korpus (`baerthel.txt`) wird zur Ableitung zusätzlicher Dialektsignaturen genutzt.
+- Für unbekannte Wörter nutzt der Generator Regeln + korpusgestützte Muster.
+
+---
+
+## Endziel
+
 Ein robustes Regelmodell und ein konsistenter Prompt, die ein LLM befähigen,
-flüssig und möglichst authentisch Büschemerisch zu erzeugen.
-
-
-### `generator/sentence_transformer.py`
-```python
-from generator.rule_based_translator import load_model, translate_sentence as translate_sentence_rule_based
-
-_MODEL = None
-
-
-def _get_model():
-    global _MODEL
-    if _MODEL is None:
-        _MODEL = load_model()
-    return _MODEL
-
-
-def translate_sentence(sentence):
-    return translate_sentence_rule_based(sentence, _get_model())
-
-
-if __name__ == "__main__":
-    sample = "Der Apfel liegt auf dem Tisch."
-    print("Hochdeutsch:", sample)
-    print("Bischemerisch:", translate_sentence(sample))
+**flüssig und möglichst authentisch Büschemerisch** zu erzeugen.
